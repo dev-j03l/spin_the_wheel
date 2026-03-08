@@ -3,11 +3,18 @@
 @tailwind utilities;
 
 :root {
-  --foreground: #0f172a;
-  --background: #f8fafc;
+  --foreground: #e5e5e5;
+  --background: #1a1a1a;
+  --panel-bg: #222222;
+  --panel-border: #333333;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
+}
+
+select option {
+  background: #222;
+  color: #e5e5e5;
 }

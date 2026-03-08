@@ -45,14 +45,14 @@ function SortableItem({
       ref={setNodeRef}
       style={{ ...style, touchAction: "none" }}
       className={`
-        flex items-center gap-3 p-3 bg-white border rounded-lg shadow-sm
+        flex items-center gap-3 p-3 bg-slate-800 border border-slate-600 rounded-lg
         ${isDragging ? "opacity-80 shadow-md z-10" : ""}
       `}
       {...attributes}
       {...listeners}
     >
-      <span className="text-slate-400 cursor-grab active:cursor-grabbing select-none">⋮⋮</span>
-      <span className="font-medium text-slate-800">{name}</span>
+      <span className="text-slate-500 cursor-grab active:cursor-grabbing select-none">⋮⋮</span>
+      <span className="font-medium text-slate-100">{name}</span>
     </div>
   );
 }

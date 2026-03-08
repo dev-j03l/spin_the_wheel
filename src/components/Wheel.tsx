@@ -1,6 +1,8 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
+
+const WHEEL_SIZE = 480;
 
 const SEGMENT_COLORS = [
   "#f59e0b", "#10b981", "#3b82f6", "#ef4444", "#8b5cf6",
@@ -32,7 +34,6 @@ export function Wheel({
 }: WheelProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rotationRef = useRef(0);
-  const [result, setResult] = useState<string | null>(null);
   const spinStartedRef = useRef(false);
   const onSpinCompleteRef = useRef(onSpinComplete);
   const onStartSpinRef = useRef(onStartSpin);
@@ -44,7 +45,6 @@ export function Wheel({
   useEffect(() => {
     if (isSpinning) return;
     rotationRef.current = 0;
-    setResult(null);
   }, [items.length, isSpinning]);
 
   useEffect(() => {
@@ -66,11 +66,13 @@ export function Wheel({
 
     const n = items.length;
     const segmentAngle = (2 * Math.PI) / n;
-    // Pointer is at top. Segment i center at -PI/2 + (i+0.5)*segmentAngle. We want targetIndex at top:
-    // totalRotation ≡ -(targetIndex+0.5)*segmentAngle (mod 2π). So extra rotation from current:
+    // Pointer is on the right. Segment i center at -PI/2 + (i+0.5)*segmentAngle. We want targetIndex at right (angle 0):
+    // rotation R such that -PI/2 + (targetIndex+0.5)*segmentAngle + R ≡ 0 (mod 2π) => R = PI/2 - (targetIndex+0.5)*segmentAngle
     const startRotation = rotationRef.current;
     const currentMod = startRotation % (2 * Math.PI);
-    const targetTotalMod = (2 * Math.PI) - (targetIndex * segmentAngle + segmentAngle / 2);
+    let targetTotalMod = (Math.PI / 2) - (targetIndex * segmentAngle + segmentAngle / 2);
+    targetTotalMod = targetTotalMod % (2 * Math.PI);
+    if (targetTotalMod < 0) targetTotalMod += 2 * Math.PI;
     let extraRad = (targetTotalMod - currentMod) % (2 * Math.PI);
     if (extraRad < 0) extraRad += 2 * Math.PI;
     const fullTurns = 5 * 2 * Math.PI;
@@ -91,7 +93,7 @@ export function Wheel({
       if (!ctx) return;
 
       const dpr = window.devicePixelRatio || 1;
-      const size = 320;
+      const size = WHEEL_SIZE;
       canvas.width = size * dpr;
       canvas.height = size * dpr;
       canvas.style.width = `${size}px`;
@@ -100,7 +102,7 @@ export function Wheel({
 
       const cx = size / 2;
       const cy = size / 2;
-      const r = size / 2 - 8;
+      const r = size / 2 - 12;
 
       ctx.save();
       ctx.translate(cx, cy);
@@ -128,30 +130,31 @@ export function Wheel({
         ctx.rotate(midAngle + Math.PI / 2);
         ctx.textAlign = "center";
         ctx.fillStyle = "#fff";
-        ctx.font = "12px system-ui, sans-serif";
+        ctx.font = "18px system-ui, sans-serif";
         const label = items[i].length > 12 ? items[i].slice(0, 11) + "…" : items[i];
-        ctx.fillText(label, 0, 4);
+        ctx.fillText(label, 0, 6);
         ctx.restore();
       }
 
       ctx.restore();
 
-      // Pointer at top — triangle tip pointing down at the wheel
+      // Blue pointer on the right — triangle tip pointing left at the wheel
+      const ptrH = 21;
+      const ptrW = 9;
       ctx.beginPath();
-      ctx.moveTo(cx, 28);
-      ctx.lineTo(cx - 14, 4);
-      ctx.lineTo(cx + 14, 4);
+      ctx.moveTo(cx + r - ptrW, cy);
+      ctx.lineTo(size - 3, cy - ptrH);
+      ctx.lineTo(size - 3, cy + ptrH);
       ctx.closePath();
-      ctx.fillStyle = "#1e293b";
+      ctx.fillStyle = "#3b82f6";
       ctx.fill();
-      ctx.strokeStyle = "#0f172a";
+      ctx.strokeStyle = "#2563eb";
       ctx.lineWidth = 1;
       ctx.stroke();
 
       if (t < 1) {
         raf = requestAnimationFrame(tick);
       } else {
-        setResult(items[targetIndex]);
         onSpinCompleteRef.current?.();
       }
     };
@@ -175,7 +178,7 @@ export function Wheel({
     if (!ctx) return;
 
     const dpr = window.devicePixelRatio || 1;
-    const size = 320;
+    const size = WHEEL_SIZE;
     canvas.width = size * dpr;
     canvas.height = size * dpr;
     canvas.style.width = `${size}px`;
@@ -184,7 +187,7 @@ export function Wheel({
 
     const cx = size / 2;
     const cy = size / 2;
-    const r = size / 2 - 8;
+    const r = size / 2 - 12;
 
     ctx.save();
     ctx.translate(cx, cy);
@@ -212,22 +215,24 @@ export function Wheel({
       ctx.rotate(midAngle + Math.PI / 2);
       ctx.textAlign = "center";
       ctx.fillStyle = "#fff";
-      ctx.font = "12px system-ui, sans-serif";
+      ctx.font = "18px system-ui, sans-serif";
       const label = items[i].length > 12 ? items[i].slice(0, 11) + "…" : items[i];
-      ctx.fillText(label, 0, 4);
+      ctx.fillText(label, 0, 6);
       ctx.restore();
     }
 
     ctx.restore();
 
+    const ptrH = 21;
+    const ptrW = 9;
     ctx.beginPath();
-    ctx.moveTo(cx, 28);
-    ctx.lineTo(cx - 14, 4);
-    ctx.lineTo(cx + 14, 4);
+    ctx.moveTo(cx + r - ptrW, cy);
+    ctx.lineTo(size - 3, cy - ptrH);
+    ctx.lineTo(size - 3, cy + ptrH);
     ctx.closePath();
-    ctx.fillStyle = "#1e293b";
+    ctx.fillStyle = "#3b82f6";
     ctx.fill();
-    ctx.strokeStyle = "#0f172a";
+    ctx.strokeStyle = "#2563eb";
     ctx.lineWidth = 1;
     ctx.stroke();
   }, [items, isSpinning, idleSpin]);
@@ -246,7 +251,7 @@ export function Wheel({
       const n = items.length;
       const segmentAngle = (2 * Math.PI) / n;
       const dpr = window.devicePixelRatio || 1;
-      const size = 320;
+      const size = WHEEL_SIZE;
       canvas.width = size * dpr;
       canvas.height = size * dpr;
       canvas.style.width = `${size}px`;
@@ -254,7 +259,7 @@ export function Wheel({
       ctx.scale(dpr, dpr);
       const cx = size / 2;
       const cy = size / 2;
-      const r = size / 2 - 8;
+      const r = size / 2 - 12;
 
       ctx.save();
       ctx.translate(cx, cy);
@@ -280,20 +285,22 @@ export function Wheel({
         ctx.rotate(midAngle + Math.PI / 2);
         ctx.textAlign = "center";
         ctx.fillStyle = "#fff";
-        ctx.font = "12px system-ui, sans-serif";
+        ctx.font = "18px system-ui, sans-serif";
         const label = items[i].length > 12 ? items[i].slice(0, 11) + "…" : items[i];
-        ctx.fillText(label, 0, 4);
+        ctx.fillText(label, 0, 6);
         ctx.restore();
       }
       ctx.restore();
+      const ptrH = 21;
+      const ptrW = 9;
       ctx.beginPath();
-      ctx.moveTo(cx, 28);
-      ctx.lineTo(cx - 14, 4);
-      ctx.lineTo(cx + 14, 4);
+      ctx.moveTo(cx + r - ptrW, cy);
+      ctx.lineTo(size - 3, cy - ptrH);
+      ctx.lineTo(size - 3, cy + ptrH);
       ctx.closePath();
-      ctx.fillStyle = "#1e293b";
+      ctx.fillStyle = "#3b82f6";
       ctx.fill();
-      ctx.strokeStyle = "#0f172a";
+      ctx.strokeStyle = "#2563eb";
       ctx.lineWidth = 1;
       ctx.stroke();
       raf = requestAnimationFrame(tick);
@@ -303,13 +310,8 @@ export function Wheel({
   }, [idleSpin, isSpinning, items]);
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <canvas ref={canvasRef} className="max-w-full" width={320} height={320} />
-      {result && (
-        <p className="text-lg font-semibold text-slate-700">
-          Landed on: <span className="text-emerald-600">{result}</span>
-        </p>
-      )}
+    <div className="flex flex-col items-center">
+      <canvas ref={canvasRef} className="max-w-full" width={WHEEL_SIZE} height={WHEEL_SIZE} />
     </div>
   );
 }

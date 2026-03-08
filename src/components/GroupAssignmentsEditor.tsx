@@ -30,13 +30,13 @@ function DraggableTeam({
       {...listeners}
       {...attributes}
       className={`
-        flex items-center gap-2 p-2 rounded border bg-white text-sm
+        flex items-center gap-2 p-2 rounded border bg-slate-800 border-slate-600 text-sm text-slate-200
         ${isDragging ? "opacity-70 shadow-lg z-10" : ""}
       `}
       style={{ touchAction: "none" }}
     >
       <span className="text-slate-400 cursor-grab">⋮⋮</span>
-      <span className="font-medium text-slate-800">{team}</span>
+      <span className="font-medium text-slate-100">{team}</span>
     </div>
   );
 }
@@ -63,11 +63,11 @@ function GroupColumn({
       ref={setNodeRef}
       className={`
         min-h-[120px] rounded-lg border-2 border-dashed p-3 transition-colors
-        ${isOver ? "border-emerald-500 bg-emerald-50" : "border-slate-200 bg-slate-50"}
+        ${isOver ? "border-amber-500 bg-amber-900/30" : "border-slate-600 bg-slate-800"}
         ${disabled ? "opacity-60" : ""}
       `}
     >
-      <h3 className={`text-sm font-semibold mb-2 ${valid ? "text-slate-700" : "text-amber-600"}`}>{title}</h3>
+      <h3 className={`text-sm font-semibold mb-2 ${valid ? "text-slate-200" : "text-amber-400"}`}>{title}</h3>
       <div className="space-y-1">
         {teams.map((team) => (
           <DraggableTeam key={team} team={team} groupName={groupName} />
