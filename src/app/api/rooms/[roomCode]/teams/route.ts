@@ -31,7 +31,7 @@ export async function POST(
       { status: 400 }
     );
   }
-  room.teams = [...new Set(teams)];
+  room.teams = Array.from(new Set(teams));
   room.riggedOrder = [];
   room.status = "teams_submitted";
   await setRoom(room);
