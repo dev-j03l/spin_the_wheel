@@ -71,6 +71,7 @@ export default function RoomPage() {
   const lastSyncedGroupNamesRef = useRef<string>("");
   const lastSyncedGroupSizesRef = useRef<string>("");
   const defaultNamesSetRef = useRef(false);
+  const hasSyncedEntriesFromServerRef = useRef(false);
 
   function ordinal(n: number) {
     const v = n % 100;
@@ -102,15 +103,22 @@ export default function RoomPage() {
         groupSizes: data.groupSizes,
         groupAssignments: data.groupAssignments,
       });
-      if (data.teams?.length) {
-        setEntriesText(data.teams.join("\n"));
-        defaultNamesSetRef.current = false;
-      } else if (data.status === "waiting") {
-        // Only set default names once so refetch/polling doesn't overwrite user input
-        if (!defaultNamesSetRef.current) {
-          setEntriesText(DEFAULT_WHEEL_NAMES.join("\n"));
-          defaultNamesSetRef.current = true;
+      // Only overwrite entriesText from server on initial load or when draw is locked/spun.
+      // Otherwise polling would wipe in-progress typing (e.g. "Alice\nBob\nCh" → server has "Alice\nBob" → reset).
+      if (data.status === "locked" || data.status === "spun") {
+        if (data.teams?.length) setEntriesText(data.teams.join("\n"));
+        hasSyncedEntriesFromServerRef.current = true;
+      } else if (!hasSyncedEntriesFromServerRef.current) {
+        if (data.teams?.length) {
+          setEntriesText(data.teams.join("\n"));
+          defaultNamesSetRef.current = false;
+        } else if (data.status === "waiting") {
+          if (!defaultNamesSetRef.current) {
+            setEntriesText(DEFAULT_WHEEL_NAMES.join("\n"));
+            defaultNamesSetRef.current = true;
+          }
         }
+        hasSyncedEntriesFromServerRef.current = true;
       }
       const serverGroupsKey = JSON.stringify(data.groupNames ?? []);
       const serverSizesKey = JSON.stringify(data.groupSizes ?? []);
@@ -139,6 +147,7 @@ export default function RoomPage() {
 
   useEffect(() => {
     defaultNamesSetRef.current = false;
+    hasSyncedEntriesFromServerRef.current = false;
   }, [roomCode]);
 
   useEffect(() => {
