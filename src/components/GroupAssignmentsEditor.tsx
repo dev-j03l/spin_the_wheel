@@ -121,7 +121,7 @@ export function GroupAssignmentsEditor({
     if (!overId.startsWith(GROUP_PREFIX)) return;
     const targetGroup = overId.slice(GROUP_PREFIX.length);
     const sourceGroup = (active.data.current as { groupName?: string } | undefined)?.groupName;
-    if (sourceGroup === targetGroup) return;
+    if (!sourceGroup || sourceGroup === targetGroup) return;
 
     const next = { ...assignments };
     next[sourceGroup] = (next[sourceGroup] || []).filter((t) => t !== team);
