@@ -3,6 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { Wheel } from "@/components/Wheel";
+import { FakeAd } from "@/components/FakeAd";
 
 type RoomStatus = "waiting" | "teams_submitted" | "locked" | "spun";
 
@@ -169,6 +170,7 @@ export default function RoomPage() {
             </li>
           ))}
         </ul>
+        <FakeAd variant="inline" />
       </main>
     );
   }
@@ -179,15 +181,17 @@ export default function RoomPage() {
   const oneLeft = remainingTeams.length === 1;
 
   return (
-    <main className="max-w-lg mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-slate-800 text-center mb-2">
-        Tournament draw
-      </h1>
-      <p className="text-slate-600 text-center mb-8">
-        Room: {room.roomCode}
-      </p>
+    <div className="max-w-6xl mx-auto px-4 py-8 flex gap-8">
+      <FakeAd variant="sidebar" />
+      <main className="flex-1 min-w-0 max-w-lg mx-auto lg:mx-0">
+        <h1 className="text-2xl font-bold text-slate-800 text-center mb-2">
+          Tournament draw
+        </h1>
+        <p className="text-slate-600 text-center mb-8">
+          Room: {room.roomCode}
+        </p>
 
-      {room.status === "waiting" && (
+        {room.status === "waiting" && (
         <form onSubmit={handleSubmitTeams} className="mb-8">
           <label className="block text-sm font-medium text-slate-700 mb-2">
             Team names (one per line)
@@ -277,9 +281,11 @@ export default function RoomPage() {
         <p className="text-center text-slate-600">Preparing draw…</p>
       )}
 
-      {error && (
-        <p className="mt-4 text-red-600 text-sm text-center">{error}</p>
-      )}
-    </main>
+        {error && (
+          <p className="mt-4 text-red-600 text-sm text-center">{error}</p>
+        )}
+        <FakeAd variant="inline" />
+      </main>
+    </div>
   );
 }

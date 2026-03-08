@@ -5,6 +5,7 @@ import {
   closestCenter,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -42,7 +43,7 @@ function SortableItem({
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{ ...style, touchAction: "none" }}
       className={`
         flex items-center gap-3 p-3 bg-white border rounded-lg shadow-sm
         ${isDragging ? "opacity-80 shadow-md z-10" : ""}
@@ -50,7 +51,7 @@ function SortableItem({
       {...attributes}
       {...listeners}
     >
-      <span className="text-slate-400 cursor-grab active:cursor-grabbing">⋮⋮</span>
+      <span className="text-slate-400 cursor-grab active:cursor-grabbing select-none">⋮⋮</span>
       <span className="font-medium text-slate-800">{name}</span>
     </div>
   );
@@ -65,6 +66,9 @@ interface SortableTeamListProps {
 export function SortableTeamList({ items, onChange, disabled }: SortableTeamListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 5 },
+    }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 

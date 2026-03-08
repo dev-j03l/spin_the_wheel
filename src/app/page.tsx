@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { FakeAd } from "@/components/FakeAd";
 
 export default function HomePage() {
   const [roomCode, setRoomCode] = useState<string | null>(null);
@@ -61,6 +62,7 @@ export default function HomePage() {
         >
           Create another room
         </button>
+        <FakeAd variant="inline" />
       </main>
     );
   }
@@ -84,6 +86,7 @@ export default function HomePage() {
       {error && (
         <p className="mt-4 text-red-600 text-sm">{error}</p>
       )}
+      <FakeAd variant="inline" />
     </main>
   );
 }

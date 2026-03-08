@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { SortableTeamList } from "@/components/SortableTeamList";
+import { FakeAd } from "@/components/FakeAd";
 
 type RoomStatus = "waiting" | "teams_submitted" | "locked" | "spun";
 
@@ -200,6 +201,7 @@ export default function AdminPage() {
             Back to home
           </Link>
         </p>
+        <FakeAd variant="inline" />
       </main>
     );
   }
@@ -261,7 +263,7 @@ export default function AdminPage() {
             Draw order (drag to reorder)
           </h2>
           <p className="text-slate-500 text-sm mb-4">
-            First in list = 1st in draw, then 2nd, 3rd, etc.
+            First in list = 1st in draw, then 2nd, 3rd, etc. On mobile, long-press a row to drag.
           </p>
           <div className="mb-6">
             <SortableTeamList
@@ -319,6 +321,7 @@ export default function AdminPage() {
           Open public page →
         </Link>
       </p>
+      <FakeAd variant="inline" />
     </main>
   );
 }
