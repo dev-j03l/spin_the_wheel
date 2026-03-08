@@ -18,7 +18,7 @@ interface GoogleAdProps {
 }
 
 export function GoogleAd({ variant = "banner" }: GoogleAdProps) {
-  const insRef = useRef<HTMLElement | null>(null);
+  const insRef = useRef<HTMLModElement | null>(null);
   const pushedRef = useRef(false);
 
   useEffect(() => {
