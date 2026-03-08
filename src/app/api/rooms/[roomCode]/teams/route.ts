@@ -10,9 +10,9 @@ export async function POST(
   if (!room) {
     return NextResponse.json({ error: "Room not found" }, { status: 404 });
   }
-  if (room.status !== "waiting") {
+  if (room.status === "locked" || room.status === "spun") {
     return NextResponse.json(
-      { error: "Teams already submitted or draw locked" },
+      { error: "Draw is locked or already spun" },
       { status: 400 }
     );
   }
@@ -33,7 +33,10 @@ export async function POST(
   }
   room.teams = Array.from(new Set(teams));
   room.riggedOrder = [];
-  room.status = "teams_submitted";
+  // Only move to teams_submitted when coming from waiting; allow updates while still teams_submitted
+  if (room.status === "waiting") {
+    room.status = "teams_submitted";
+  }
   await setRoom(room);
   return NextResponse.json({ teams: room.teams, status: room.status });
 }
