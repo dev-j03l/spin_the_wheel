@@ -25,12 +25,18 @@ export async function setRoom(room: Room): Promise<void> {
   await redis.set(roomKey(room.roomCode), room, { ex: ROOM_TTL_SECONDS });
 }
 
+function randomAdminKey(): string {
+  const { randomBytes } = require("crypto");
+  return randomBytes(24).toString("hex");
+}
+
 export async function createRoom(roomCode: string): Promise<Room> {
   const room: Room = {
     roomCode: roomCode.toUpperCase(),
     teams: [],
     riggedOrder: [],
     status: "waiting",
+    adminKey: randomAdminKey(),
     createdAt: Date.now(),
   };
   await setRoom(room);

@@ -7,10 +7,15 @@ function publicRoom(room: Room) {
     roomCode: room.roomCode,
     teams: room.teams,
     status: room.status,
-    // Expose when locked (wheel needs segment order to spin) and when spun (show result)
+    groupNames: room.groupNames,
+    groupSizes: room.groupSizes,
     riggedOrder:
       room.status === "locked" || room.status === "spun"
         ? room.riggedOrder
+        : undefined,
+    groupAssignments:
+      (room.status === "locked" || room.status === "spun") && room.groupAssignments
+        ? room.groupAssignments
         : undefined,
   };
 }

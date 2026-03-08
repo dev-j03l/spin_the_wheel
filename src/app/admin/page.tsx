@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { SortableTeamList } from "@/components/SortableTeamList";
+import { GroupAssignmentsEditor } from "@/components/GroupAssignmentsEditor";
 import { FakeAd } from "@/components/FakeAd";
 
 type RoomStatus = "waiting" | "teams_submitted" | "locked" | "spun";
@@ -12,12 +14,17 @@ interface Room {
   teams: string[];
   riggedOrder: string[];
   status: RoomStatus;
+  groupNames?: string[];
+  groupSizes?: number[];
+  groupAssignments?: Record<string, string[]>;
 }
 
-export default function AdminPage() {
+function AdminContent() {
+  const searchParams = useSearchParams();
   const [roomCode, setRoomCode] = useState("");
   const [password, setPassword] = useState("");
   const [loggedInRoom, setLoggedInRoom] = useState<string | null>(null);
+  const [linkVerifying, setLinkVerifying] = useState(true);
   const [room, setRoom] = useState<Room | null>(null);
   const [order, setOrder] = useState<string[]>([]);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -25,6 +32,8 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [lockLoading, setLockLoading] = useState(false);
   const [clearLoading, setClearLoading] = useState(false);
+  const [groupAssignments, setGroupAssignments] = useState<Record<string, string[]>>({});
+  const lastGroupsInitKeyRef = useRef<string>("");
 
   const fetchRoom = useCallback(async (code: string) => {
     try {
@@ -42,6 +51,29 @@ export default function AdminPage() {
       setRoom(null);
     }
   }, []);
+
+  useEffect(() => {
+    const room = searchParams.get("room");
+    const key = searchParams.get("key");
+    if (room && key) {
+      fetch("/api/admin/verify-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomCode: room.trim().toUpperCase(), key }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          setLinkVerifying(false);
+          if (data.success && data.roomCode) {
+            setLoggedInRoom(data.roomCode);
+            window.history.replaceState({}, "", "/admin");
+          }
+        })
+        .catch(() => setLinkVerifying(false));
+    } else {
+      setLinkVerifying(false);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!loggedInRoom) return;
@@ -65,6 +97,26 @@ export default function AdminPage() {
       setOrder([...serverOrder]);
     }
   }, [room?.teams, room?.riggedOrder]);
+
+  useEffect(() => {
+    if (!room?.groupNames?.length || !room?.teams?.length) return;
+    if (room.groupAssignments && Object.keys(room.groupAssignments).length > 0) {
+      lastGroupsInitKeyRef.current = "";
+      setGroupAssignments(room.groupAssignments);
+    } else {
+      const initKey = `${room.groupNames.join(",")}|${room.teams.join(",")}`;
+      if (initKey !== lastGroupsInitKeyRef.current) {
+        lastGroupsInitKeyRef.current = initKey;
+        const names = room.groupNames;
+        const acc: Record<string, string[]> = {};
+        names.forEach((g) => (acc[g] = []));
+        room.teams.forEach((t, i) => {
+          acc[names[i % names.length]].push(t);
+        });
+        setGroupAssignments(acc);
+      }
+    }
+  }, [room?.groupNames, room?.groupAssignments, room?.teams]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -95,14 +147,22 @@ export default function AdminPage() {
   }
 
   async function handleLockRig() {
-    if (!loggedInRoom || order.length === 0) return;
+    if (!loggedInRoom || !room) return;
+    if (room.groupNames?.length) {
+      const flat = room.groupNames.flatMap((g) => groupAssignments[g] ?? []);
+      if (flat.length !== room.teams.length || room.teams.some((t) => !flat.includes(t))) return;
+    } else if (order.length === 0) return;
+
     setActionError(null);
     setLockLoading(true);
     try {
+      const body = room.groupNames?.length
+        ? { lockRig: true, groupAssignments }
+        : { lockRig: true, riggedOrder: order };
       const res = await fetch(`/api/admin/rooms/${encodeURIComponent(loggedInRoom)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lockRig: true, riggedOrder: order }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -110,7 +170,8 @@ export default function AdminPage() {
         return;
       }
       setRoom(data);
-      setOrder([...data.riggedOrder]);
+      setOrder([...(data.riggedOrder ?? [])]);
+      if (data.groupAssignments) setGroupAssignments(data.groupAssignments);
     } catch {
       setActionError("Something went wrong");
     } finally {
@@ -151,13 +212,20 @@ export default function AdminPage() {
 
   // Login form
   if (!loggedInRoom) {
+    if (linkVerifying) {
+      return (
+        <main className="max-w-sm mx-auto px-4 py-16 text-center">
+          <p className="text-slate-600">Verifying link…</p>
+        </main>
+      );
+    }
     return (
       <main className="max-w-sm mx-auto px-4 py-16">
         <h1 className="text-2xl font-bold text-slate-800 mb-2 text-center">
           Admin
         </h1>
         <p className="text-slate-600 text-center mb-8 text-sm">
-          Enter room code and password to manage the draw.
+          Use your admin link (from when you created the room) to open the panel with no password. Or enter room code + password below.
         </p>
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
@@ -259,19 +327,42 @@ export default function AdminPage() {
 
       {room && room.teams.length > 0 && (
         <>
-          <h2 className="text-lg font-semibold text-slate-800 mb-2">
-            Draw order (drag to reorder)
-          </h2>
-          <p className="text-slate-500 text-sm mb-4">
-            First in list = 1st in draw, then 2nd, 3rd, etc. On mobile, long-press a row to drag.
-          </p>
-          <div className="mb-6">
-            <SortableTeamList
-              items={order}
-              onChange={setOrder}
-              disabled={room.status === "locked" || room.status === "spun"}
-            />
-          </div>
+          {room.groupNames?.length ? (
+            <>
+              <h2 className="text-lg font-semibold text-slate-800 mb-2">
+                Assign teams to groups (drag and drop)
+              </h2>
+              <p className="text-slate-500 text-sm mb-4">
+                Drag teams between groups. Order within each group is the draw order. On mobile, long-press to drag.
+              </p>
+              <div className="mb-6">
+                <GroupAssignmentsEditor
+                  groupNames={room.groupNames}
+                  groupSizes={room.groupSizes}
+                  teams={room.teams}
+                  value={groupAssignments}
+                  onChange={setGroupAssignments}
+                  disabled={room.status === "locked" || room.status === "spun"}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <h2 className="text-lg font-semibold text-slate-800 mb-2">
+                Draw order (drag to reorder)
+              </h2>
+              <p className="text-slate-500 text-sm mb-4">
+                First in list = 1st in draw, then 2nd, 3rd, etc. On mobile, long-press a row to drag.
+              </p>
+              <div className="mb-6">
+                <SortableTeamList
+                  items={order}
+                  onChange={setOrder}
+                  disabled={room.status === "locked" || room.status === "spun"}
+                />
+              </div>
+            </>
+          )}
 
           <div className="flex gap-3">
             <button
@@ -281,7 +372,12 @@ export default function AdminPage() {
                 lockLoading ||
                 room.status === "locked" ||
                 room.status === "spun" ||
-                order.length !== room.teams.length
+                (room.groupNames?.length
+                  ? (() => {
+                      const flat = (room.groupNames ?? []).flatMap((g) => groupAssignments[g] ?? []);
+                      return flat.length !== room.teams.length || room.teams.some((t) => !flat.includes(t));
+                    })()
+                  : order.length !== room.teams.length)
               }
               className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 disabled:opacity-50"
             >
@@ -323,5 +419,17 @@ export default function AdminPage() {
       </p>
       <FakeAd variant="inline" />
     </main>
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <Suspense fallback={
+      <main className="max-w-sm mx-auto px-4 py-16 text-center">
+        <p className="text-slate-600">Loading…</p>
+      </main>
+    }>
+      <AdminContent />
+    </Suspense>
   );
 }

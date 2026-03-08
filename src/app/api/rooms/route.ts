@@ -24,5 +24,8 @@ export async function POST() {
     );
   }
   const room = await createRoom(code);
-  return NextResponse.json({ roomCode: room.roomCode });
+  return NextResponse.json({
+    roomCode: room.roomCode,
+    adminKey: room.adminKey,
+  });
 }

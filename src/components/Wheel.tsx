@@ -19,6 +19,7 @@ interface WheelProps {
   targetIndex: number; // which segment (0 = first in items) should land at top
   isSpinning: boolean;
   onStartSpin?: () => void;
+  idleSpin?: boolean; // slow continuous rotation when not spinning
 }
 
 export function Wheel({
@@ -27,6 +28,7 @@ export function Wheel({
   targetIndex,
   isSpinning,
   onStartSpin,
+  idleSpin = false,
 }: WheelProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rotationRef = useRef(0);
@@ -64,15 +66,18 @@ export function Wheel({
 
     const n = items.length;
     const segmentAngle = (2 * Math.PI) / n;
-    // Pointer is at top (canvas -90°). Segments drawn from -PI/2; segment i center at -PI/2 + (i+0.5)*segmentAngle.
-    // We want targetIndex segment center at top: rotation R such that -PI/2 + (targetIndex+0.5)*segmentAngle + R = -PI/2 (mod 2PI) => R = -(targetIndex+0.5)*segmentAngle (mod 2PI).
-    const finalAngleRad = (2 * Math.PI) - (targetIndex * segmentAngle + segmentAngle / 2);
+    // Pointer is at top. Segment i center at -PI/2 + (i+0.5)*segmentAngle. We want targetIndex at top:
+    // totalRotation ≡ -(targetIndex+0.5)*segmentAngle (mod 2π). So extra rotation from current:
+    const startRotation = rotationRef.current;
+    const currentMod = startRotation % (2 * Math.PI);
+    const targetTotalMod = (2 * Math.PI) - (targetIndex * segmentAngle + segmentAngle / 2);
+    let extraRad = (targetTotalMod - currentMod) % (2 * Math.PI);
+    if (extraRad < 0) extraRad += 2 * Math.PI;
     const fullTurns = 5 * 2 * Math.PI;
-    const targetRotationRad = fullTurns + (finalAngleRad % (2 * Math.PI));
+    const targetRotationRad = fullTurns + extraRad;
 
     const duration = 5000; // ms
     const startTime = performance.now();
-    const startRotation = rotationRef.current; // Use current so we can chain spins; reset when items change (above)
 
     let raf: number;
     const tick = (now: number) => {
@@ -131,11 +136,11 @@ export function Wheel({
 
       ctx.restore();
 
-      // Pointer at top
+      // Pointer at top — triangle tip pointing down at the wheel
       ctx.beginPath();
-      ctx.moveTo(cx, 4);
-      ctx.lineTo(cx - 12, 24);
-      ctx.lineTo(cx + 12, 24);
+      ctx.moveTo(cx, 28);
+      ctx.lineTo(cx - 14, 4);
+      ctx.lineTo(cx + 14, 4);
       ctx.closePath();
       ctx.fillStyle = "#1e293b";
       ctx.fill();
@@ -156,9 +161,9 @@ export function Wheel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSpinning, items.length, targetIndex]);
 
-  // Initial draw when not spinning
+  // Initial draw when not spinning (skip if idle animation is running)
   useEffect(() => {
-    if (items.length === 0 || isSpinning) return;
+    if (items.length === 0 || isSpinning || idleSpin) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -216,16 +221,86 @@ export function Wheel({
     ctx.restore();
 
     ctx.beginPath();
-    ctx.moveTo(cx, 4);
-    ctx.lineTo(cx - 12, 24);
-    ctx.lineTo(cx + 12, 24);
+    ctx.moveTo(cx, 28);
+    ctx.lineTo(cx - 14, 4);
+    ctx.lineTo(cx + 14, 4);
     ctx.closePath();
     ctx.fillStyle = "#1e293b";
     ctx.fill();
     ctx.strokeStyle = "#0f172a";
     ctx.lineWidth = 1;
     ctx.stroke();
-  }, [items, isSpinning]);
+  }, [items, isSpinning, idleSpin]);
+
+  // Idle spin: slow continuous rotation when not spinning
+  useEffect(() => {
+    if (!idleSpin || isSpinning || items.length === 0) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    let raf: number;
+    const tick = () => {
+      rotationRef.current += 0.004;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      const n = items.length;
+      const segmentAngle = (2 * Math.PI) / n;
+      const dpr = window.devicePixelRatio || 1;
+      const size = 320;
+      canvas.width = size * dpr;
+      canvas.height = size * dpr;
+      canvas.style.width = `${size}px`;
+      canvas.style.height = `${size}px`;
+      ctx.scale(dpr, dpr);
+      const cx = size / 2;
+      const cy = size / 2;
+      const r = size / 2 - 8;
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(rotationRef.current);
+      ctx.translate(-cx, -cy);
+      for (let i = 0; i < n; i++) {
+        const start = i * segmentAngle - Math.PI / 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, start, start + segmentAngle);
+        ctx.closePath();
+        ctx.fillStyle = SEGMENT_COLORS[i % SEGMENT_COLORS.length];
+        ctx.fill();
+        ctx.strokeStyle = "rgba(0,0,0,0.2)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        const midAngle = start + segmentAngle / 2;
+        const textR = r * 0.65;
+        const tx = cx + textR * Math.cos(midAngle);
+        const ty = cy + textR * Math.sin(midAngle);
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.rotate(midAngle + Math.PI / 2);
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#fff";
+        ctx.font = "12px system-ui, sans-serif";
+        const label = items[i].length > 12 ? items[i].slice(0, 11) + "…" : items[i];
+        ctx.fillText(label, 0, 4);
+        ctx.restore();
+      }
+      ctx.restore();
+      ctx.beginPath();
+      ctx.moveTo(cx, 28);
+      ctx.lineTo(cx - 14, 4);
+      ctx.lineTo(cx + 14, 4);
+      ctx.closePath();
+      ctx.fillStyle = "#1e293b";
+      ctx.fill();
+      ctx.strokeStyle = "#0f172a";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [idleSpin, isSpinning, items]);
 
   return (
     <div className="flex flex-col items-center gap-4">

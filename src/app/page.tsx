@@ -6,6 +6,7 @@ import { FakeAd } from "@/components/FakeAd";
 
 export default function HomePage() {
   const [roomCode, setRoomCode] = useState<string | null>(null);
+  const [adminKey, setAdminKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,6 +18,7 @@ export default function HomePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to create room");
       setRoomCode(data.roomCode);
+      setAdminKey(data.adminKey ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -27,6 +29,7 @@ export default function HomePage() {
   if (roomCode) {
     const base = typeof window !== "undefined" ? window.location.origin : "";
     const publicUrl = `${base}/room/${roomCode}`;
+    const adminUrl = adminKey ? `${base}/admin?room=${roomCode}&key=${adminKey}` : null;
     return (
       <main className="max-w-lg mx-auto px-4 py-12 text-center">
         <h1 className="text-2xl font-bold text-slate-800 mb-2">
@@ -38,22 +41,41 @@ export default function HomePage() {
         <div className="bg-slate-100 rounded-lg p-4 mb-4 font-mono text-sm break-all">
           {publicUrl}
         </div>
-        <p className="text-slate-500 text-sm mb-6">
+        <p className="text-slate-500 text-sm mb-4">
           Room code: <strong>{roomCode}</strong>
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        {adminUrl && (
+          <>
+            <p className="text-slate-600 text-sm mb-2">
+              Admin link <span className="text-slate-400">(keep secret — use this to manage the draw)</span>:
+            </p>
+            <div className="bg-slate-800 text-slate-100 rounded-lg p-3 mb-4 font-mono text-xs break-all">
+              {adminUrl}
+            </div>
+          </>
+        )}
+        <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
           <Link
             href={`/room/${roomCode}`}
             className="px-5 py-2.5 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700"
           >
             Open public page
           </Link>
-          <Link
-            href="/admin"
-            className="px-5 py-2.5 bg-slate-700 text-white rounded-lg font-medium hover:bg-slate-800"
-          >
-            Admin panel
-          </Link>
+          {adminUrl ? (
+            <a
+              href={adminUrl}
+              className="px-5 py-2.5 bg-slate-700 text-white rounded-lg font-medium hover:bg-slate-800"
+            >
+              Open admin (no password)
+            </a>
+          ) : (
+            <Link
+              href="/admin"
+              className="px-5 py-2.5 bg-slate-700 text-white rounded-lg font-medium hover:bg-slate-800"
+            >
+              Admin panel
+            </Link>
+          )}
         </div>
         <button
           type="button"
